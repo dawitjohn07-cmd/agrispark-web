@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f9fafb;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+        monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Status bar fallback for web */
+.status-bar {
+    background-color: #fff;
+    height: 0;
+    width: 100%;
+}
+
+/* Smooth transitions */
+@layer components {
+    .transition-smooth {
+        @apply transition-all duration-300 ease-in-out;
+    }
+
+    .btn-primary {
+        @apply px-4 py-2 rounded-lg font-semibold text-white transition-all cursor-pointer;
+    }
+
+    .btn-primary-farmer {
+        @apply bg-farmer-green hover:bg-opacity-90 text-white;
+    }
+
+    .btn-primary-buyer {
+        @apply bg-buyer-blue hover:bg-opacity-90 text-white;
+    }
+
+    .card-shadow {
+        @apply shadow-md hover:shadow-lg transition-shadow;
+    }
+
+    .input-field {
+        @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-1;
+    }
+}
