@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/Header';
-import TabBar from '@/components/TabBar';
 
 export default function BuyerChat() {
     const [profile, setProfile] = useState<any>(null);
@@ -49,8 +48,6 @@ export default function BuyerChat() {
                     <p className="text-gray-400 text-sm">Stay connected with your product suppliers</p>
                 </div>
             </main>
-
-            <TabBar tabs={tabsConfig} role="buyer" />
         </div>
     );
 }

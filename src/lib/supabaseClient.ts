@@ -14,7 +14,7 @@ const createFallbackClient = () => ({
         signUp: async () => ({ data: { user: null, session: null }, error: { message: 'Supabase is not configured.' } }),
         resetPasswordForEmail: async () => ({ data: null, error: { message: 'Supabase is not configured.' } }),
         updateUser: async () => ({ data: { user: null }, error: { message: 'Supabase is not configured.' } }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
     },
     from: () => ({
         select: () => ({
@@ -31,7 +31,10 @@ const createFallbackClient = () => ({
     }),
     storage: {
         from: () => ({
+            upload: async () => ({ data: null, error: { message: 'Supabase is not configured.' } }),
             getPublicUrl: () => ({ data: { publicUrl: '' } }),
+            remove: async () => ({ data: null, error: { message: 'Supabase is not configured.' } }),
+            list: async () => ({ data: [], error: { message: 'Supabase is not configured.' } }),
         }),
     },
 });

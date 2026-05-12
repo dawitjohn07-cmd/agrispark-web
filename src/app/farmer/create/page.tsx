@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/Header';
-import TabBar from '@/components/TabBar';
 
 export default function FarmerCreateProduct() {
     const router = useRouter();
@@ -199,8 +198,6 @@ export default function FarmerCreateProduct() {
                     </div>
                 </form>
             </main>
-
-            <TabBar tabs={tabsConfig} role="farmer" />
         </div>
     );
 }

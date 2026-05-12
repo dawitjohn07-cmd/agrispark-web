@@ -11,7 +11,14 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let cancelled = false;
+        const timeout = setTimeout(() => {
+            if (!cancelled) setLoading(false);
+        }, 3000);
+
         supabase.auth.getSession().then(({ data: { session } }) => {
+            if (cancelled) return;
+            clearTimeout(timeout);
             setSession(session as any);
             setLoading(false);
 
@@ -35,7 +42,12 @@ export default function Home() {
                 };
                 fetchRole();
             }
+        }).catch((e) => {
+            clearTimeout(timeout);
+            setLoading(false);
         });
+
+        return () => { cancelled = true; clearTimeout(timeout); };
     }, [router]);
 
     if (loading) {

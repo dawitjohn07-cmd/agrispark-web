@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/Header';
-import TabBar from '@/components/TabBar';
 
 export default function FarmerChat() {
     const [profile, setProfile] = useState<any>(null);
@@ -50,8 +49,6 @@ export default function FarmerChat() {
                     <p className="text-gray-400 text-sm">This section will include AI-powered assistance for farmers</p>
                 </div>
             </main>
-
-            <TabBar tabs={tabsConfig} role="farmer" />
         </div>
     );
 }

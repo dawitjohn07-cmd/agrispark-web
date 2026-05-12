@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/Header';
-import TabBar from '@/components/TabBar';
 import { formatMoney } from '@/lib/utils';
 
 interface Order {
@@ -135,8 +134,6 @@ export default function BuyerOrders() {
                     </div>
                 )}
             </main>
-
-            <TabBar tabs={tabsConfig} role="buyer" />
         </div>
     );
 }

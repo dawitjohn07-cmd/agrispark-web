@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/Header';
-import TabBar from '@/components/TabBar';
 import { formatMoney } from '@/lib/utils';
 
 interface Order {
@@ -201,8 +200,6 @@ export default function FarmerOrders() {
                     </div>
                 )}
             </main>
-
-            <TabBar tabs={tabsConfig} role="farmer" />
         </div>
     );
 }

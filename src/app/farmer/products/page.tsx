@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/Header';
-import TabBar from '@/components/TabBar';
 import { formatMoney, resolveImageUrl } from '@/lib/utils';
 
 interface Product {
@@ -180,8 +179,6 @@ export default function FarmerProducts() {
                     </div>
                 )}
             </main>
-
-            <TabBar tabs={tabsConfig} role="farmer" />
         </div>
     );
 }

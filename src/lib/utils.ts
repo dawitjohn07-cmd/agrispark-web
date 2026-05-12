@@ -2,6 +2,8 @@ import { supabase } from './supabaseClient';
 
 // Email validation
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const PROFILE_MEDIA_BUCKET = 'profile-media';
+export const PRODUCT_IMAGES_BUCKET = 'product-images';
 
 export const validateEmail = (email: string): boolean => {
     return emailRegex.test(email);
@@ -30,6 +32,8 @@ export const syncUserProfile = async (user: any) => {
         phone_number: meta.phone_number || '',
         farm_name: meta.business_name || meta.farm_name || '',
         location: meta.location || '',
+        avatar_url: meta.avatar_url || '',
+        cover_url: meta.cover_url || '',
     };
 
     const { error } = await supabase
@@ -61,6 +65,10 @@ export const getInitials = (name: string): string => {
 
 // Resolve image URL from Supabase storage
 export const resolveImageUrl = (value: string): string => {
+    return resolvePublicStorageUrl(value, PRODUCT_IMAGES_BUCKET);
+};
+
+export const resolvePublicStorageUrl = (value: string, bucket: string = PROFILE_MEDIA_BUCKET): string => {
     if (!value) return '';
 
     const v = value.trim();
@@ -68,11 +76,12 @@ export const resolveImageUrl = (value: string): string => {
     // If already full URL → return as is
     if (v.startsWith('http')) return v;
 
-    // Clean path (remove leading slash + bucket name)
-    const path = v.replace(/^\/|^product-images\//g, '');
+    const normalized = v.replace(/^\/+/, '');
+    const bucketPrefix = `${bucket}/`;
+    const path = normalized.startsWith(bucketPrefix) ? normalized.slice(bucketPrefix.length) : normalized;
 
     // Return public URL
     return supabase.storage
-        .from('product-images')
+        .from(bucket)
         .getPublicUrl(path).data.publicUrl;
 };

@@ -13,16 +13,13 @@ interface HeaderProps {
 export default function Header({ role = 'farmer', userName }: HeaderProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [showMenu, setShowMenu] = useState(false);
-    const accentColor = role === 'farmer' ? 'text-farmer-green' : 'text-buyer-blue';
     const bgColor = role === 'farmer' ? 'bg-farmer-green' : 'bg-buyer-blue';
+    const accentColor = role === 'farmer' ? 'text-farmer-green' : 'text-buyer-blue';
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.push('/login');
     };
-
-    const toggleMenu = () => setShowMenu(!showMenu);
 
     return (
         <header className={`${bgColor} text-white shadow-md sticky top-0 z-50`}>
@@ -45,32 +42,10 @@ export default function Header({ role = 'farmer', userName }: HeaderProps) {
                     </div>
                 </div>
 
-                {/* Mobile Menu Toggle */}
-                <button
-                    onClick={toggleMenu}
-                    className="md:hidden text-white text-2xl"
-                >
-                    ☰
-                </button>
+                {/* Mobile: no hamburger (sidebar always visible) */}
             </nav>
 
-            {/* Mobile Menu */}
-            {showMenu && (
-                <div className="md:hidden bg-opacity-95 bg-gray-900 text-white p-4 space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className="text-sm">Welcome, {userName || 'User'}</span>
-                    </div>
-                    <button
-                        onClick={() => {
-                            handleLogout();
-                            setShowMenu(false);
-                        }}
-                        className="w-full bg-white text-farmer-green px-4 py-2 rounded-lg font-semibold"
-                    >
-                        Logout
-                    </button>
-                </div>
-            )}
+            {/* no mobile menu: sidebar visible at all sizes */}
         </header>
     );
 }

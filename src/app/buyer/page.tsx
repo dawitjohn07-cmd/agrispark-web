@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Header from '@/components/Header';
-import TabBar from '@/components/TabBar';
 import { formatMoney, resolveImageUrl } from '@/lib/utils';
 
 interface Product {
@@ -32,21 +31,7 @@ export default function BuyerHome() {
 
     const fetchProducts = useCallback(async () => {
         try {
-            const { data: authData } = await supabase.auth.getUser();
-            const authUser = authData?.user;
-
-            if (!authUser?.email) throw new Error('Not authenticated');
-
-            const { data: userRow } = await supabase
-                .from('users')
-                .select('id, full_name')
-                .eq('email', authUser.email.toLowerCase())
-                .maybeSingle();
-
-            if (!userRow) throw new Error('User not found');
-            setProfile(userRow);
-
-            // Fetch all products
+            // Fetch all products (public, no auth required)
             const { data: productRows, error: productError } = await supabase
                 .from('products')
                 .select('*')
@@ -64,6 +49,27 @@ export default function BuyerHome() {
 
             setProducts(productsWithImages);
             setFilteredProducts(productsWithImages);
+
+            // Optionally fetch authenticated buyer profile
+            try {
+                const { data: authData } = await supabase.auth.getUser();
+                const authUser = authData?.user;
+
+                if (authUser?.email) {
+                    const { data: userRow } = await supabase
+                        .from('users')
+                        .select('id, full_name')
+                        .eq('email', authUser.email.toLowerCase())
+                        .maybeSingle();
+
+                    if (userRow) {
+                        setProfile(userRow);
+                    }
+                }
+            } catch (authErr) {
+                // Silently fail auth check - products load anyway
+                console.log('Auth check failed:', authErr);
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -112,7 +118,7 @@ export default function BuyerHome() {
             <main className="max-w-7xl mx-auto px-4 py-6">
                 {/* Welcome Banner */}
                 <div className="bg-gradient-to-r from-buyer-blue to-blue-600 text-white rounded-lg p-6 mb-6">
-                    <h1 className="text-3xl font-bold">Welcome, {profile?.full_name}!</h1>
+                    <h1 className="text-3xl font-bold">Welcome, {profile?.full_name || 'Guest'}!</h1>
                     <p className="text-blue-100 mt-2">Discover fresh produce from local farmers</p>
                 </div>
 
@@ -185,8 +191,6 @@ export default function BuyerHome() {
                     )}
                 </div>
             </main>
-
-            <TabBar tabs={tabsConfig} role="buyer" />
         </div>
     );
 }
