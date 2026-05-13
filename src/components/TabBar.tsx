@@ -82,9 +82,23 @@ export default function TabBar() {
         };
     }, []);
 
-    if (!ready || !role) return null;
-
     const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+
+    // Show nothing on public routes or while loading
+    const publicRoutes = ["/", "/login", "/reset-password", "/reset-password-confirm", "/admin"];
+    const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname?.startsWith(`${route}/`));
+
+    if (!ready) {
+        return isPublicRoute ? null : (
+            <div className="w-60 flex-shrink-0 bg-gray-100" />
+        );
+    }
+
+    if (!role) {
+        return isPublicRoute ? null : (
+            <div className="w-60 flex-shrink-0 bg-gray-100" />
+        );
+    }
 
     const farmerLinks: NavLink[] = [
         { icon: "🏠", label: "Home", href: "/farmer" },
