@@ -9,6 +9,7 @@ interface Message {
     message: string;
     sender_id: string;
     sender_name: string;
+    receiver_id: string;
     created_at: string;
 }
 
@@ -32,9 +33,67 @@ export default function OrderChat() {
     const [otherUser, setOtherUser] = useState<any>(null);
     const [messageText, setMessageText] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [editingText, setEditingText] = useState('');
     const [error, setError] = useState('');
 
     useEffect(() => {
+        let mounted = true;
+        let activeChannel: any = null;
+
+        const hydrateSenderNames = async (rows: any[]) => {
+            const senderIds = Array.from(new Set((rows || []).map((msg) => msg.sender_id))).filter(Boolean) as string[];
+            let senderMap: Record<string, string> = {};
+
+            if (senderIds.length) {
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('id, full_name')
+                    .in('id', senderIds);
+
+                senderMap = Object.fromEntries((usersData || []).map((user: any) => [user.id, user.full_name || 'Unknown']));
+            }
+
+            return (rows || []).map((msg: any) => ({
+                ...msg,
+                sender_name: senderMap[msg.sender_id] || 'Unknown',
+            }));
+        };
+
+        const loadMessages = async () => {
+            const { data: messagesData, error: messagesError } = await supabase
+                .from('messages')
+                .select('id, message, sender_id, receiver_id, created_at')
+                .eq('order_id', orderId)
+                .order('created_at', { ascending: true });
+
+            if (messagesError) throw messagesError;
+
+            const enrichedMessages = await hydrateSenderNames(messagesData || []);
+            if (mounted) setMessages(enrichedMessages as Message[]);
+        };
+
+        const setupRealtimeChannel = async () => {
+            // Create channel, chain all .on() listeners, then .subscribe() once
+            const channel = supabase
+                .channel(`order-chat-${orderId}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'messages',
+                        filter: `order_id=eq.${orderId}`,
+                    },
+                    async () => {
+                        if (mounted) await loadMessages();
+                    }
+                )
+                .subscribe();
+
+            return channel;
+        };
+
         const fetchData = async () => {
             try {
                 const { data: authData } = await supabase.auth.getUser();
@@ -55,6 +114,7 @@ export default function OrderChat() {
                     return;
                 }
 
+                if (!mounted) return;
                 setCurrentUser(userRow);
 
                 // Get order details
@@ -65,7 +125,7 @@ export default function OrderChat() {
                     .single();
 
                 if (!orderData) {
-                    setError('Order not found');
+                    if (mounted) setError('Order not found');
                     return;
                 }
 
@@ -80,10 +140,11 @@ export default function OrderChat() {
                 const isBuyer = orderData.buyer_id === userRow.id;
 
                 if (!isFarmer && !isBuyer) {
-                    setError('You do not have access to this chat');
+                    if (mounted) setError('You do not have access to this chat');
                     return;
                 }
 
+                if (!mounted) return;
                 setOrder(orderData);
 
                 // Get other user
@@ -94,40 +155,34 @@ export default function OrderChat() {
                     .eq('id', otherUserId)
                     .single();
 
+                if (!mounted) return;
                 setOtherUser(otherUserData);
 
-                // Fetch messages
-                const { data: messagesData } = await supabase
-                    .from('messages')
-                    .select('*')
-                    .eq('order_id', orderId)
-                    .order('created_at', { ascending: true });
+                await loadMessages();
 
-                const enrichedMessages = await Promise.all(
-                    (messagesData || []).map(async (msg) => {
-                        const { data: senderData } = await supabase
-                            .from('users')
-                            .select('full_name')
-                            .eq('id', msg.sender_id)
-                            .single();
-
-                        return {
-                            ...msg,
-                            sender_name: senderData?.full_name || 'Unknown',
-                        };
-                    })
-                );
-
-                setMessages(enrichedMessages);
+                if (!mounted) return;
+                // Setup realtime subscription after initial load
+                activeChannel = await setupRealtimeChannel();
             } catch (err: any) {
-                setError(err.message || 'Error loading chat');
-                console.error(err);
+                if (mounted) {
+                    setError(err.message || 'Error loading chat');
+                    console.error(err);
+                }
             } finally {
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         };
 
-        if (orderId) fetchData();
+        if (orderId) {
+            fetchData();
+        }
+
+        return () => {
+            mounted = false;
+            if (activeChannel) {
+                supabase.removeChannel(activeChannel);
+            }
+        };
     }, [orderId, router]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
@@ -138,24 +193,24 @@ export default function OrderChat() {
         setIsSending(true);
 
         try {
-            const { error: insertError } = await supabase.from('messages').insert({
+            const { data: insertedRow, error: insertError } = await supabase.from('messages').insert({
                 order_id: orderId,
                 sender_id: currentUser.id,
                 receiver_id: otherUser.id,
                 message: messageText,
-            });
+            }).select('id, message, sender_id, receiver_id, created_at').single();
 
             if (insertError) throw insertError;
 
-            // Add message to local state
-            setMessages([
-                ...messages,
+            setMessages((prev) => [
+                ...prev,
                 {
-                    id: Date.now().toString(),
-                    message: messageText,
-                    sender_id: currentUser.id,
+                    id: insertedRow.id,
+                    message: insertedRow.message,
+                    sender_id: insertedRow.sender_id,
+                    receiver_id: insertedRow.receiver_id,
                     sender_name: currentUser.full_name,
-                    created_at: new Date().toISOString(),
+                    created_at: insertedRow.created_at,
                 },
             ]);
 
@@ -164,6 +219,58 @@ export default function OrderChat() {
             setError(err.message || 'Failed to send message');
         } finally {
             setIsSending(false);
+        }
+    };
+
+    const startEdit = (message: Message) => {
+        setEditingMessageId(message.id);
+        setEditingText(message.message);
+    };
+
+    const cancelEdit = () => {
+        setEditingMessageId(null);
+        setEditingText('');
+    };
+
+    const saveEdit = async () => {
+        if (!editingMessageId || !editingText.trim() || !currentUser) return;
+
+        try {
+            const { error: updateError } = await supabase
+                .from('messages')
+                .update({ message: editingText.trim() })
+                .eq('id', editingMessageId)
+                .eq('sender_id', currentUser.id);
+
+            if (updateError) throw updateError;
+
+            setMessages((prev) =>
+                prev.map((msg) =>
+                    msg.id === editingMessageId ? { ...msg, message: editingText.trim() } : msg
+                )
+            );
+            cancelEdit();
+        } catch (err: any) {
+            setError(err?.message || 'Failed to edit message');
+        }
+    };
+
+    const deleteMessage = async (messageId: string) => {
+        if (!currentUser) return;
+
+        try {
+            const { error: deleteError } = await supabase
+                .from('messages')
+                .delete()
+                .eq('id', messageId)
+                .eq('sender_id', currentUser.id);
+
+            if (deleteError) throw deleteError;
+
+            setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+            if (editingMessageId === messageId) cancelEdit();
+        } catch (err: any) {
+            setError(err?.message || 'Failed to delete message');
         }
     };
 
@@ -231,10 +338,58 @@ export default function OrderChat() {
                                         }`}
                                 >
                                     <p className="text-xs font-semibold mb-1">{msg.sender_name}</p>
-                                    <p className="break-words">{msg.message}</p>
+
+                                    {editingMessageId === msg.id ? (
+                                        <div className="space-y-2">
+                                            <input
+                                                type="text"
+                                                value={editingText}
+                                                onChange={(event) => setEditingText(event.target.value)}
+                                                className="w-full px-2 py-1 rounded text-sm text-gray-900"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={saveEdit}
+                                                    className="px-2 py-1 text-xs rounded bg-white text-green-700"
+                                                >
+                                                    Save
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={cancelEdit}
+                                                    className="px-2 py-1 text-xs rounded bg-white text-gray-700"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="break-words">{msg.message}</p>
+                                    )}
+
                                     <p className="text-xs mt-1 opacity-70">
                                         {new Date(msg.created_at).toLocaleTimeString()}
                                     </p>
+
+                                    {msg.sender_id === currentUser.id && editingMessageId !== msg.id && (
+                                        <div className="mt-2 flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => startEdit(msg)}
+                                                className="px-2 py-1 text-xs rounded bg-white/90 text-green-700"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => deleteMessage(msg.id)}
+                                                className="px-2 py-1 text-xs rounded bg-white/90 text-red-700"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
