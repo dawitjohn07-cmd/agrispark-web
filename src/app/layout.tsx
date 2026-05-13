@@ -1,5 +1,6 @@
 import '../styles/globals.css';
 import TabBar from '@/components/TabBar';
+import ClientAuth from '@/components/ClientAuth';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -11,6 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <meta name="description" content="AgriSpark: Direct produce transactions between farmers and bulk buyers" />
             </head>
             <body className="bg-gray-50">
+                <ClientAuth />
                 <div className="flex h-screen">
                     <TabBar />
                     <main className="flex-1 overflow-y-auto">
